@@ -95,7 +95,9 @@ function App() {
         <Waveform active={loading} />
 
         <p className="ink-panel__note">
-          {loading ? 'Generating your audio…' : `Supports ${new Set(voices.map((v) => v.language)).size || '7'} languages.`}
+          {loading
+            ? 'Generating your audio…'
+            : `Supports ${new Set(voices.map((v) => v.language)).size || '7'} languages.`}
         </p>
       </aside>
 
