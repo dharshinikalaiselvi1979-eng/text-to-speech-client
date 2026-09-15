@@ -1,6 +1,6 @@
 import React from 'react';
 
-function LandingPage({ onGetStarted, onLogin, onGuestDemo }) {
+function LandingPage({ user, onGetStarted, onLogin, onGoToDashboard, onGuestDemo, onSignOut }) {
   return (
     <div className="landing-container">
       {/* Header / Navbar */}
@@ -10,17 +10,33 @@ function LandingPage({ onGetStarted, onLogin, onGuestDemo }) {
           <span className="landing-nav__title">TextToSpeech AI</span>
         </div>
         <div className="landing-nav__actions">
-          <button type="button" className="btn-text" style={{ fontSize: 14 }} onClick={onLogin}>
-            Log In
-          </button>
-          <button
-            type="button"
-            className="btn btn--primary"
-            style={{ width: 'auto', padding: '8px 18px', fontSize: 14 }}
-            onClick={onGetStarted}
-          >
-            Sign Up Free
-          </button>
+          {user ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span className="field__meta" style={{ fontSize: 13 }}>👤 {user.email}</span>
+              <button
+                type="button"
+                className="btn btn--primary"
+                style={{ width: 'auto', padding: '8px 18px', fontSize: 14 }}
+                onClick={onGoToDashboard}
+              >
+                Go to Dashboard →
+              </button>
+            </div>
+          ) : (
+            <>
+              <button type="button" className="btn-text" style={{ fontSize: 14 }} onClick={onLogin}>
+                Log In
+              </button>
+              <button
+                type="button"
+                className="btn btn--primary"
+                style={{ width: 'auto', padding: '8px 18px', fontSize: 14 }}
+                onClick={onGetStarted}
+              >
+                Sign Up Free
+              </button>
+            </>
+          )}
         </div>
       </nav>
 
@@ -33,12 +49,20 @@ function LandingPage({ onGetStarted, onLogin, onGuestDemo }) {
         </p>
 
         <div className="hero-cta-group">
-          <button type="button" className="btn btn--primary hero-btn" onClick={onGetStarted}>
-            Get Started Now →
-          </button>
-          <button type="button" className="btn btn--secondary hero-btn" onClick={onGuestDemo}>
-            Try Demo as Guest
-          </button>
+          {user ? (
+            <button type="button" className="btn btn--primary hero-btn" onClick={onGoToDashboard}>
+              Go to Dashboard →
+            </button>
+          ) : (
+            <>
+              <button type="button" className="btn btn--primary hero-btn" onClick={onGetStarted}>
+                Get Started Now →
+              </button>
+              <button type="button" className="btn btn--secondary hero-btn" onClick={onLogin}>
+                Log In / Sign Up
+              </button>
+            </>
+          )}
         </div>
 
         {/* Feature Pill Tags */}

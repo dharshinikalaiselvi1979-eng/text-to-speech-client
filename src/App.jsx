@@ -51,6 +51,7 @@ function App() {
   const [error, setError] = useState('');
 
   // 3-Stage Page Flow State: 'landing' | 'auth' | 'dashboard'
+  // ALWAYS starts at 'landing' when opening the app!
   const [view, setView] = useState('landing');
   const [authMode, setAuthMode] = useState('login'); // 'login' | 'signup'
   const [isGuest, setIsGuest] = useState(false);
@@ -58,13 +59,6 @@ function App() {
   // Dashboard Tabs: 'generate' | 'history' | 'favourites'
   const [activeTab, setActiveTab] = useState('generate');
   const [favourites, setFavourites] = useState([]);
-
-  // Automatically switch view based on user status
-  useEffect(() => {
-    if (user) {
-      setView('dashboard');
-    }
-  }, [user]);
 
   useEffect(() => {
     getVoices()
@@ -156,10 +150,11 @@ function App() {
     setView('landing');
   };
 
-  // ================= Stage 1: Landing Page (First Screen) =================
-  if (!user && !isGuest && view === 'landing') {
+  // ================= Stage 1: Landing Page (Always First Screen on Load) =================
+  if (view === 'landing') {
     return (
       <LandingPage
+        user={user}
         onGetStarted={() => {
           setAuthMode('signup');
           setView('auth');
@@ -168,16 +163,18 @@ function App() {
           setAuthMode('login');
           setView('auth');
         }}
+        onGoToDashboard={() => setView('dashboard')}
         onGuestDemo={() => {
           setIsGuest(true);
           setView('dashboard');
         }}
+        onSignOut={handleSignOut}
       />
     );
   }
 
   // ================= Stage 2: Login / Signup Page (Second Screen) =================
-  if (!user && !isGuest && view === 'auth') {
+  if (view === 'auth') {
     return (
       <div className="auth-page-shell">
         <AuthForm
@@ -194,26 +191,6 @@ function App() {
           }}
         />
       </div>
-    );
-  }
-
-  // Fallback if not logged in and not guest: default to landing page
-  if (!user && !isGuest) {
-    return (
-      <LandingPage
-        onGetStarted={() => {
-          setAuthMode('signup');
-          setView('auth');
-        }}
-        onLogin={() => {
-          setAuthMode('login');
-          setView('auth');
-        }}
-        onGuestDemo={() => {
-          setIsGuest(true);
-          setView('dashboard');
-        }}
-      />
     );
   }
 
@@ -239,15 +216,12 @@ function App() {
 
       <main className="paper-panel">
         <div className="form-sheet">
-          {/* Navigation Bar */}
+          {/* Top User / Auth Navigation Bar */}
           <div className="user-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <button
               type="button"
               className="btn-text"
-              onClick={() => {
-                setIsGuest(false);
-                setView('landing');
-              }}
+              onClick={() => setView('landing')}
               title="Go back to Landing Page"
             >
               🏠 Home
