@@ -50,7 +50,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Page Flow State: 'landing' | 'auth' | 'dashboard'
+  // 3-Stage Page Flow State: 'landing' | 'auth' | 'dashboard'
   const [view, setView] = useState('landing');
   const [authMode, setAuthMode] = useState('login'); // 'login' | 'signup'
   const [isGuest, setIsGuest] = useState(false);
@@ -59,7 +59,7 @@ function App() {
   const [activeTab, setActiveTab] = useState('generate');
   const [favourites, setFavourites] = useState([]);
 
-  // Automatically go to dashboard if user is already logged in
+  // Automatically switch view based on user status
   useEffect(() => {
     if (user) {
       setView('dashboard');
@@ -156,8 +156,8 @@ function App() {
     setView('landing');
   };
 
-  // ---------------- Stage 1: Landing Page ----------------
-  if (!user && view === 'landing') {
+  // ================= Stage 1: Landing Page (First Screen) =================
+  if (!user && !isGuest && view === 'landing') {
     return (
       <LandingPage
         onGetStarted={() => {
@@ -176,8 +176,8 @@ function App() {
     );
   }
 
-  // ---------------- Stage 2: Login / Signup Page ----------------
-  if (!user && view === 'auth') {
+  // ================= Stage 2: Login / Signup Page (Second Screen) =================
+  if (!user && !isGuest && view === 'auth') {
     return (
       <div className="auth-page-shell">
         <AuthForm
@@ -197,7 +197,27 @@ function App() {
     );
   }
 
-  // ---------------- Stage 3: App Dashboard ----------------
+  // Fallback if not logged in and not guest: default to landing page
+  if (!user && !isGuest) {
+    return (
+      <LandingPage
+        onGetStarted={() => {
+          setAuthMode('signup');
+          setView('auth');
+        }}
+        onLogin={() => {
+          setAuthMode('login');
+          setView('auth');
+        }}
+        onGuestDemo={() => {
+          setIsGuest(true);
+          setView('dashboard');
+        }}
+      />
+    );
+  }
+
+  // ================= Stage 3: Application Dashboard (Third Screen) =================
   return (
     <div className="app-shell">
       <aside className="ink-panel">
@@ -219,13 +239,16 @@ function App() {
 
       <main className="paper-panel">
         <div className="form-sheet">
-          {/* Top User / Auth Navigation Bar */}
+          {/* Navigation Bar */}
           <div className="user-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <button
               type="button"
               className="btn-text"
-              onClick={() => setView('landing')}
-              title="Go to Landing Page"
+              onClick={() => {
+                setIsGuest(false);
+                setView('landing');
+              }}
+              title="Go back to Landing Page"
             >
               🏠 Home
             </button>
@@ -244,6 +267,7 @@ function App() {
                   type="button"
                   className="btn-text"
                   onClick={() => {
+                    setIsGuest(false);
                     setAuthMode('login');
                     setView('auth');
                   }}
