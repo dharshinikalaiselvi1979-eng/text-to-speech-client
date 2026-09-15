@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import ErrorMessage from './ErrorMessage';
 
-function AuthForm() {
+function AuthForm({ onSuccess, onClose }) {
   const { signIn, signUp } = useAuth();
   const [mode, setMode] = useState('login'); // 'login' | 'signup'
   const [email, setEmail] = useState('');
@@ -28,13 +28,14 @@ function AuthForm() {
     setLoading(true);
     try {
       if (mode === 'login') {
-        const { error: signInError } = await signIn(email, password);
-        if (signInError) throw signInError;
+        await signIn(email, password);
+        if (onSuccess) onSuccess();
       } else {
-        const { error: signUpError } = await signUp(email, password);
-        if (signUpError) throw signUpError;
-        setNotice('Account created! Check your email to confirm, then log in.');
-        setMode('login');
+        await signUp(email, password);
+        setNotice('Account created successfully! Logging you in...');
+        // Auto sign in after signup
+        await signIn(email, password);
+        if (onSuccess) onSuccess();
       }
     } catch (err) {
       setError(err.message || 'Something went wrong. Please try again.');
@@ -44,34 +45,47 @@ function AuthForm() {
   };
 
   return (
-    <div className="form-sheet">
-      <div className="form-sheet__eyebrow">{mode === 'login' ? 'Welcome back' : 'New here'}</div>
-      <h2 className="form-sheet__heading">{mode === 'login' ? 'Log in' : 'Create an account'}</h2>
+    <div className="auth-card">
+      <div className="auth-card__header">
+        <div>
+          <div className="form-sheet__eyebrow">{mode === 'login' ? 'Welcome back' : 'New here'}</div>
+          <h2 className="form-sheet__heading" style={{ marginBottom: 0 }}>
+            {mode === 'login' ? 'Log in' : 'Create an account'}
+          </h2>
+        </div>
+        {onClose && (
+          <button type="button" className="btn-close" onClick={onClose} aria-label="Close">
+            ✕
+          </button>
+        )}
+      </div>
 
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} style={{ marginTop: 24 }}>
         <div className="field">
-          <label className="field__label" htmlFor="email">Email</label>
+          <label className="field__label" htmlFor="auth-email">Email</label>
           <input
-            id="email"
+            id="auth-email"
             type="email"
             className="textarea"
-            style={{ minHeight: 'auto' }}
+            style={{ minHeight: 'auto', height: 44 }}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             autoComplete="email"
+            placeholder="you@example.com"
           />
         </div>
 
         <div className="field">
-          <label className="field__label" htmlFor="password">Password</label>
+          <label className="field__label" htmlFor="auth-password">Password</label>
           <input
-            id="password"
+            id="auth-password"
             type="password"
             className="textarea"
-            style={{ minHeight: 'auto' }}
+            style={{ minHeight: 'auto', height: 44 }}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+            placeholder="••••••••"
           />
         </div>
 
@@ -79,14 +93,19 @@ function AuthForm() {
           {loading ? 'Please wait…' : mode === 'login' ? 'Log in' : 'Sign up'}
         </button>
 
-        {notice && <p className="field__meta" style={{ color: 'var(--teal)', marginTop: 16 }}>{notice}</p>}
+        {notice && <p className="field__meta" style={{ color: 'var(--teal)', marginTop: 12 }}>{notice}</p>}
         <ErrorMessage message={error} />
       </form>
 
       <button
         type="button"
         className="btn btn--secondary"
-        onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setError(''); setNotice(''); }}
+        style={{ marginTop: 16 }}
+        onClick={() => {
+          setMode(mode === 'login' ? 'signup' : 'login');
+          setError('');
+          setNotice('');
+        }}
       >
         {mode === 'login' ? "Don't have an account? Sign up" : 'Already have an account? Log in'}
       </button>

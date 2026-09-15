@@ -6,7 +6,19 @@ import GenerateButton from './components/GenerateButton';
 import AudioPlayer from './components/AudioPlayer';
 import DownloadButton from './components/DownloadButton';
 import ErrorMessage from './components/ErrorMessage';
-import { convertToSpeech, getVoices, getAudioUrl, getDownloadUrl } from './services/ttsService';
+import AuthForm from './components/AuthForm';
+import HistoryList from './components/HistoryList';
+import FavouritesList from './components/FavouritesList';
+import { useAuth } from './context/AuthContext';
+import {
+  convertToSpeech,
+  getVoices,
+  getAudioUrl,
+  getDownloadUrl,
+  getFavourites,
+  addFavourite,
+  removeFavourite,
+} from './services/ttsService';
 import './App.css';
 
 const MAX_LENGTH = 500;
@@ -27,6 +39,7 @@ function Waveform({ active }) {
 }
 
 function App() {
+  const { user, accessToken, signOut } = useAuth();
   const [text, setText] = useState('');
   const [language, setLanguage] = useState('');
   const [voice, setVoice] = useState('');
@@ -36,11 +49,33 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // UI state
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [activeTab, setActiveTab] = useState('generate'); // 'generate' | 'history' | 'favourites'
+  const [favourites, setFavourites] = useState([]);
+
   useEffect(() => {
     getVoices()
       .then((res) => setVoices(res.data.voices))
       .catch(() => setError('Could not load voices. Is the backend running?'));
   }, []);
+
+  useEffect(() => {
+    if (accessToken) {
+      loadFavourites();
+    } else {
+      setFavourites([]);
+    }
+  }, [accessToken]);
+
+  const loadFavourites = async () => {
+    try {
+      const res = await getFavourites(accessToken);
+      setFavourites(res.data.favourites || []);
+    } catch (err) {
+      // non-critical
+    }
+  };
 
   useEffect(() => {
     setVoice('');
@@ -69,7 +104,7 @@ function App() {
 
     setLoading(true);
     try {
-      const res = await convertToSpeech(text, language, voice);
+      const res = await convertToSpeech(text, language, voice, accessToken);
       setAudioUrl(getAudioUrl(res.data.audioUrl));
       setFilename(res.data.filename);
     } catch (err) {
@@ -80,13 +115,34 @@ function App() {
     }
   };
 
+  const isFav = (vName) => favourites.some((f) => f.voice_name === vName);
+
+  const handleToggleFav = async (vName) => {
+    if (!accessToken) return;
+    try {
+      if (isFav(vName)) {
+        await removeFavourite(vName, accessToken);
+        setFavourites((prev) => prev.filter((f) => f.voice_name !== vName));
+      } else {
+        await addFavourite(vName, accessToken);
+        setFavourites((prev) => [...prev, { voice_name: vName }]);
+      }
+    } catch (err) {
+      setError('Could not update favourite.');
+    }
+  };
+
+  const handleSelectFavVoice = (vObj) => {
+    setLanguage(vObj.language);
+    setVoice(vObj.name);
+    setActiveTab('generate');
+  };
+
   return (
     <div className="app-shell">
       <aside className="ink-panel">
         <div className="ink-panel__mark">Text to Speech</div>
-        <h1 className="ink-panel__title">
-          Give your words a voice.
-        </h1>
+        <h1 className="ink-panel__title">Give your words a voice.</h1>
         <p className="ink-panel__tagline">
           Type or paste text, pick a language and voice, and listen back —
           or download the audio to keep.
@@ -103,22 +159,104 @@ function App() {
 
       <main className="paper-panel">
         <div className="form-sheet">
-          <div className="form-sheet__eyebrow">New generation</div>
-          <h2 className="form-sheet__heading">Enter your text</h2>
+          {/* User / Auth Header Bar */}
+          <div className="user-bar">
+            {user ? (
+              <div className="user-pill">
+                <span className="user-email">👤 {user.email}</span>
+                <button type="button" className="btn-text" onClick={signOut}>
+                  Log out
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="btn btn--secondary"
+                style={{ width: 'auto', padding: '6px 14px', fontSize: 13 }}
+                onClick={() => setShowAuthModal(true)}
+              >
+                🔐 Log in / Sign up
+              </button>
+            )}
+          </div>
 
-          <TextInput text={text} setText={setText} maxLength={MAX_LENGTH} />
-          <LanguageSelector language={language} setLanguage={setLanguage} voices={voices} />
-          <VoiceSelector voice={voice} setVoice={setVoice} voices={voices} language={language} />
-          <GenerateButton onClick={handleGenerate} loading={loading} disabled={!text.trim()} />
-
-          <ErrorMessage message={error} />
-
-          {audioUrl && (
-            <div className="audio-block">
-              <div className="audio-block__title">Generated audio</div>
-              <AudioPlayer audioUrl={audioUrl} />
-              <DownloadButton downloadUrl={getDownloadUrl(filename)} filename={filename} />
+          {/* Navigation Tabs if logged in */}
+          {user && (
+            <div className="tab-bar">
+              <button
+                type="button"
+                className={`tab-btn ${activeTab === 'generate' ? 'tab-btn--active' : ''}`}
+                onClick={() => setActiveTab('generate')}
+              >
+                Generate
+              </button>
+              <button
+                type="button"
+                className={`tab-btn ${activeTab === 'history' ? 'tab-btn--active' : ''}`}
+                onClick={() => setActiveTab('history')}
+              >
+                History
+              </button>
+              <button
+                type="button"
+                className={`tab-btn ${activeTab === 'favourites' ? 'tab-btn--active' : ''}`}
+                onClick={() => setActiveTab('favourites')}
+              >
+                Favourites
+              </button>
             </div>
+          )}
+
+          {/* Auth Modal / Sheet */}
+          {showAuthModal && !user && (
+            <div className="modal-overlay" onClick={() => setShowAuthModal(false)}>
+              <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+                <AuthForm onSuccess={() => setShowAuthModal(false)} onClose={() => setShowAuthModal(false)} />
+              </div>
+            </div>
+          )}
+
+          {/* Main Tab Content */}
+          {activeTab === 'generate' && (
+            <>
+              <div className="form-sheet__eyebrow">New generation</div>
+              <h2 className="form-sheet__heading">Enter your text</h2>
+
+              <TextInput text={text} setText={setText} maxLength={MAX_LENGTH} />
+              <LanguageSelector language={language} setLanguage={setLanguage} voices={voices} />
+              <VoiceSelector
+                voice={voice}
+                setVoice={setVoice}
+                voices={voices}
+                language={language}
+                isFav={isFav(voice)}
+                onToggleFav={handleToggleFav}
+                isLoggedIn={!!user}
+              />
+              <GenerateButton onClick={handleGenerate} loading={loading} disabled={!text.trim()} />
+
+              <ErrorMessage message={error} />
+
+              {audioUrl && (
+                <div className="audio-block">
+                  <div className="audio-block__title">Generated audio</div>
+                  <AudioPlayer audioUrl={audioUrl} />
+                  <DownloadButton downloadUrl={getDownloadUrl(filename)} filename={filename} />
+                </div>
+              )}
+            </>
+          )}
+
+          {activeTab === 'history' && user && (
+            <HistoryList accessToken={accessToken} />
+          )}
+
+          {activeTab === 'favourites' && user && (
+            <FavouritesList
+              accessToken={accessToken}
+              voices={voices}
+              onSelectVoice={handleSelectFavVoice}
+            />
           )}
         </div>
       </main>

@@ -1,40 +1,64 @@
-import { createContext, useContext, useEffect, useState } from 'react';
-import { supabase } from '../services/supabaseClient';
+import { createContext, useContext, useState, useEffect } from 'react';
 
 const AuthContext = createContext(null);
 
+const API = import.meta.env.VITE_API_URL;
+
 export function AuthProvider({ children }) {
-  const [session, setSession] = useState(null);
+  const [user, setUser] = useState(null);
+  const [accessToken, setAccessToken] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Restore session from localStorage on mount
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setLoading(false);
-    });
-
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      setSession(newSession);
-    });
-
-    return () => listener.subscription.unsubscribe();
+    const token = localStorage.getItem('tts_token');
+    const savedUser = localStorage.getItem('tts_user');
+    if (token && savedUser) {
+      setAccessToken(token);
+      setUser(JSON.parse(savedUser));
+    }
+    setLoading(false);
   }, []);
 
-  const signUp = (email, password) => supabase.auth.signUp({ email, password });
-  const signIn = (email, password) => supabase.auth.signInWithPassword({ email, password });
-  const signOut = () => supabase.auth.signOut();
-
-  const value = {
-    session,
-    user: session?.user ?? null,
-    accessToken: session?.access_token ?? null,
-    loading,
-    signUp,
-    signIn,
-    signOut,
+  const signUp = async (email, password) => {
+    const res = await fetch(`${API}/api/auth/signup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error);
+    return data;
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  const signIn = async (email, password) => {
+    const res = await fetch(`${API}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error);
+
+    setAccessToken(data.accessToken);
+    setUser(data.user);
+    localStorage.setItem('tts_token', data.accessToken);
+    localStorage.setItem('tts_user', JSON.stringify(data.user));
+    return data;
+  };
+
+  const signOut = () => {
+    setAccessToken(null);
+    setUser(null);
+    localStorage.removeItem('tts_token');
+    localStorage.removeItem('tts_user');
+  };
+
+  return (
+    <AuthContext.Provider value={{ user, accessToken, loading, signUp, signIn, signOut }}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {
