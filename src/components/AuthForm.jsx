@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import ErrorMessage from './ErrorMessage';
 
-function AuthForm({ onSuccess, onClose }) {
+function AuthForm({ onSuccess, onClose, onGuest }) {
   const { signIn, signUp } = useAuth();
   const [mode, setMode] = useState('login'); // 'login' | 'signup'
   const [email, setEmail] = useState('');
@@ -97,18 +97,30 @@ function AuthForm({ onSuccess, onClose }) {
         <ErrorMessage message={error} />
       </form>
 
-      <button
-        type="button"
-        className="btn btn--secondary"
-        style={{ marginTop: 16 }}
-        onClick={() => {
-          setMode(mode === 'login' ? 'signup' : 'login');
-          setError('');
-          setNotice('');
-        }}
-      >
-        {mode === 'login' ? "Don't have an account? Sign up" : 'Already have an account? Log in'}
-      </button>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 16 }}>
+        <button
+          type="button"
+          className="btn btn--secondary"
+          onClick={() => {
+            setMode(mode === 'login' ? 'signup' : 'login');
+            setError('');
+            setNotice('');
+          }}
+        >
+          {mode === 'login' ? "Don't have an account? Sign up" : 'Already have an account? Log in'}
+        </button>
+
+        {onGuest && (
+          <button
+            type="button"
+            className="btn-text"
+            style={{ marginTop: 8, textAlign: 'center' }}
+            onClick={onGuest}
+          >
+            Continue as Guest (No login) →
+          </button>
+        )}
+      </div>
     </div>
   );
 }

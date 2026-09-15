@@ -50,7 +50,7 @@ function App() {
   const [error, setError] = useState('');
 
   // UI state
-  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [isGuest, setIsGuest] = useState(false);
   const [activeTab, setActiveTab] = useState('generate'); // 'generate' | 'history' | 'favourites'
   const [favourites, setFavourites] = useState([]);
 
@@ -138,6 +138,8 @@ function App() {
     setActiveTab('generate');
   };
 
+  const showAuthFirst = !user && !isGuest;
+
   return (
     <div className="app-shell">
       <aside className="ink-panel">
@@ -159,7 +161,7 @@ function App() {
 
       <main className="paper-panel">
         <div className="form-sheet">
-          {/* User / Auth Header Bar */}
+          {/* Top User / Auth Header Bar */}
           <div className="user-bar">
             {user ? (
               <div className="user-pill">
@@ -168,95 +170,99 @@ function App() {
                   Log out
                 </button>
               </div>
-            ) : (
-              <button
-                type="button"
-                className="btn btn--secondary"
-                style={{ width: 'auto', padding: '6px 14px', fontSize: 13 }}
-                onClick={() => setShowAuthModal(true)}
-              >
-                🔐 Log in / Sign up
-              </button>
-            )}
+            ) : isGuest ? (
+              <div className="user-pill">
+                <span className="user-email">Guest Mode</span>
+                <button type="button" className="btn-text" onClick={() => setIsGuest(false)}>
+                  Log in / Sign up
+                </button>
+              </div>
+            ) : null}
           </div>
 
-          {/* Navigation Tabs if logged in */}
-          {user && (
-            <div className="tab-bar">
-              <button
-                type="button"
-                className={`tab-btn ${activeTab === 'generate' ? 'tab-btn--active' : ''}`}
-                onClick={() => setActiveTab('generate')}
-              >
-                Generate
-              </button>
-              <button
-                type="button"
-                className={`tab-btn ${activeTab === 'history' ? 'tab-btn--active' : ''}`}
-                onClick={() => setActiveTab('history')}
-              >
-                History
-              </button>
-              <button
-                type="button"
-                className={`tab-btn ${activeTab === 'favourites' ? 'tab-btn--active' : ''}`}
-                onClick={() => setActiveTab('favourites')}
-              >
-                Favourites
-              </button>
-            </div>
-          )}
-
-          {/* Auth Modal / Sheet */}
-          {showAuthModal && !user && (
-            <div className="modal-overlay" onClick={() => setShowAuthModal(false)}>
-              <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-                <AuthForm onSuccess={() => setShowAuthModal(false)} onClose={() => setShowAuthModal(false)} />
-              </div>
-            </div>
-          )}
-
-          {/* Main Tab Content */}
-          {activeTab === 'generate' && (
-            <>
-              <div className="form-sheet__eyebrow">New generation</div>
-              <h2 className="form-sheet__heading">Enter your text</h2>
-
-              <TextInput text={text} setText={setText} maxLength={MAX_LENGTH} />
-              <LanguageSelector language={language} setLanguage={setLanguage} voices={voices} />
-              <VoiceSelector
-                voice={voice}
-                setVoice={setVoice}
-                voices={voices}
-                language={language}
-                isFav={isFav(voice)}
-                onToggleFav={handleToggleFav}
-                isLoggedIn={!!user}
+          {/* If NOT logged in and NOT guest: Show Login / Signup Screen FIRST */}
+          {showAuthFirst ? (
+            <div style={{ marginTop: 20 }}>
+              <AuthForm
+                onSuccess={() => {
+                  setIsGuest(false);
+                  setActiveTab('generate');
+                }}
+                onGuest={() => setIsGuest(true)}
               />
-              <GenerateButton onClick={handleGenerate} loading={loading} disabled={!text.trim()} />
-
-              <ErrorMessage message={error} />
-
-              {audioUrl && (
-                <div className="audio-block">
-                  <div className="audio-block__title">Generated audio</div>
-                  <AudioPlayer audioUrl={audioUrl} />
-                  <DownloadButton downloadUrl={getDownloadUrl(filename)} filename={filename} />
+            </div>
+          ) : (
+            <>
+              {/* Navigation Tabs if logged in */}
+              {user && (
+                <div className="tab-bar">
+                  <button
+                    type="button"
+                    className={`tab-btn ${activeTab === 'generate' ? 'tab-btn--active' : ''}`}
+                    onClick={() => setActiveTab('generate')}
+                  >
+                    Generate
+                  </button>
+                  <button
+                    type="button"
+                    className={`tab-btn ${activeTab === 'history' ? 'tab-btn--active' : ''}`}
+                    onClick={() => setActiveTab('history')}
+                  >
+                    History
+                  </button>
+                  <button
+                    type="button"
+                    className={`tab-btn ${activeTab === 'favourites' ? 'tab-btn--active' : ''}`}
+                    onClick={() => setActiveTab('favourites')}
+                  >
+                    Favourites
+                  </button>
                 </div>
               )}
+
+              {/* Main Tab Content */}
+              {activeTab === 'generate' && (
+                <>
+                  <div className="form-sheet__eyebrow">New generation</div>
+                  <h2 className="form-sheet__heading">Enter your text</h2>
+
+                  <TextInput text={text} setText={setText} maxLength={MAX_LENGTH} />
+                  <LanguageSelector language={language} setLanguage={setLanguage} voices={voices} />
+                  <VoiceSelector
+                    voice={voice}
+                    setVoice={setVoice}
+                    voices={voices}
+                    language={language}
+                    isFav={isFav(voice)}
+                    onToggleFav={handleToggleFav}
+                    isLoggedIn={!!user}
+                  />
+                  <GenerateButton onClick={handleGenerate} loading={loading} disabled={!text.trim()} />
+
+                  <ErrorMessage message={error} />
+
+                  {audioUrl && (
+                    <div className="audio-block">
+                      <div className="audio-block__title">Generated audio</div>
+                      <AudioPlayer audioUrl={audioUrl} />
+                      <DownloadButton downloadUrl={getDownloadUrl(filename)} filename={filename} />
+                    </div>
+                  )}
+                </>
+              )}
+
+              {activeTab === 'history' && user && (
+                <HistoryList accessToken={accessToken} />
+              )}
+
+              {activeTab === 'favourites' && user && (
+                <FavouritesList
+                  accessToken={accessToken}
+                  voices={voices}
+                  onSelectVoice={handleSelectFavVoice}
+                />
+              )}
             </>
-          )}
-
-          {activeTab === 'history' && user && (
-            <HistoryList accessToken={accessToken} />
-          )}
-
-          {activeTab === 'favourites' && user && (
-            <FavouritesList
-              accessToken={accessToken}
-              voices={voices}
-              onSelectVoice={handleSelectFavVoice}
-            />
           )}
         </div>
       </main>
