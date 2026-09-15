@@ -9,6 +9,7 @@ import ErrorMessage from './components/ErrorMessage';
 import AuthForm from './components/AuthForm';
 import HistoryList from './components/HistoryList';
 import FavouritesList from './components/FavouritesList';
+import LandingPage from './components/LandingPage';
 import { useAuth } from './context/AuthContext';
 import {
   convertToSpeech,
@@ -49,10 +50,21 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // UI state
+  // Page Flow State: 'landing' | 'auth' | 'dashboard'
+  const [view, setView] = useState('landing');
+  const [authMode, setAuthMode] = useState('login'); // 'login' | 'signup'
   const [isGuest, setIsGuest] = useState(false);
-  const [activeTab, setActiveTab] = useState('generate'); // 'generate' | 'history' | 'favourites'
+
+  // Dashboard Tabs: 'generate' | 'history' | 'favourites'
+  const [activeTab, setActiveTab] = useState('generate');
   const [favourites, setFavourites] = useState([]);
+
+  // Automatically go to dashboard if user is already logged in
+  useEffect(() => {
+    if (user) {
+      setView('dashboard');
+    }
+  }, [user]);
 
   useEffect(() => {
     getVoices()
@@ -138,8 +150,54 @@ function App() {
     setActiveTab('generate');
   };
 
-  const showAuthFirst = !user && !isGuest;
+  const handleSignOut = () => {
+    signOut();
+    setIsGuest(false);
+    setView('landing');
+  };
 
+  // ---------------- Stage 1: Landing Page ----------------
+  if (!user && view === 'landing') {
+    return (
+      <LandingPage
+        onGetStarted={() => {
+          setAuthMode('signup');
+          setView('auth');
+        }}
+        onLogin={() => {
+          setAuthMode('login');
+          setView('auth');
+        }}
+        onGuestDemo={() => {
+          setIsGuest(true);
+          setView('dashboard');
+        }}
+      />
+    );
+  }
+
+  // ---------------- Stage 2: Login / Signup Page ----------------
+  if (!user && view === 'auth') {
+    return (
+      <div className="auth-page-shell">
+        <AuthForm
+          initialMode={authMode}
+          onSuccess={() => {
+            setIsGuest(false);
+            setView('dashboard');
+            setActiveTab('generate');
+          }}
+          onBack={() => setView('landing')}
+          onGuest={() => {
+            setIsGuest(true);
+            setView('dashboard');
+          }}
+        />
+      </div>
+    );
+  }
+
+  // ---------------- Stage 3: App Dashboard ----------------
   return (
     <div className="app-shell">
       <aside className="ink-panel">
@@ -161,108 +219,109 @@ function App() {
 
       <main className="paper-panel">
         <div className="form-sheet">
-          {/* Top User / Auth Header Bar */}
-          <div className="user-bar">
+          {/* Top User / Auth Navigation Bar */}
+          <div className="user-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <button
+              type="button"
+              className="btn-text"
+              onClick={() => setView('landing')}
+              title="Go to Landing Page"
+            >
+              🏠 Home
+            </button>
+
             {user ? (
               <div className="user-pill">
                 <span className="user-email">👤 {user.email}</span>
-                <button type="button" className="btn-text" onClick={signOut}>
+                <button type="button" className="btn-text" onClick={handleSignOut}>
                   Log out
                 </button>
               </div>
-            ) : isGuest ? (
+            ) : (
               <div className="user-pill">
                 <span className="user-email">Guest Mode</span>
-                <button type="button" className="btn-text" onClick={() => setIsGuest(false)}>
+                <button
+                  type="button"
+                  className="btn-text"
+                  onClick={() => {
+                    setAuthMode('login');
+                    setView('auth');
+                  }}
+                >
                   Log in / Sign up
                 </button>
               </div>
-            ) : null}
+            )}
           </div>
 
-          {/* If NOT logged in and NOT guest: Show Login / Signup Screen FIRST */}
-          {showAuthFirst ? (
-            <div style={{ marginTop: 20 }}>
-              <AuthForm
-                onSuccess={() => {
-                  setIsGuest(false);
-                  setActiveTab('generate');
-                }}
-                onGuest={() => setIsGuest(true)}
-              />
+          {/* Navigation Tabs if logged in */}
+          {user && (
+            <div className="tab-bar">
+              <button
+                type="button"
+                className={`tab-btn ${activeTab === 'generate' ? 'tab-btn--active' : ''}`}
+                onClick={() => setActiveTab('generate')}
+              >
+                Generate
+              </button>
+              <button
+                type="button"
+                className={`tab-btn ${activeTab === 'history' ? 'tab-btn--active' : ''}`}
+                onClick={() => setActiveTab('history')}
+              >
+                History
+              </button>
+              <button
+                type="button"
+                className={`tab-btn ${activeTab === 'favourites' ? 'tab-btn--active' : ''}`}
+                onClick={() => setActiveTab('favourites')}
+              >
+                Favourites
+              </button>
             </div>
-          ) : (
+          )}
+
+          {/* Main Tab Content */}
+          {activeTab === 'generate' && (
             <>
-              {/* Navigation Tabs if logged in */}
-              {user && (
-                <div className="tab-bar">
-                  <button
-                    type="button"
-                    className={`tab-btn ${activeTab === 'generate' ? 'tab-btn--active' : ''}`}
-                    onClick={() => setActiveTab('generate')}
-                  >
-                    Generate
-                  </button>
-                  <button
-                    type="button"
-                    className={`tab-btn ${activeTab === 'history' ? 'tab-btn--active' : ''}`}
-                    onClick={() => setActiveTab('history')}
-                  >
-                    History
-                  </button>
-                  <button
-                    type="button"
-                    className={`tab-btn ${activeTab === 'favourites' ? 'tab-btn--active' : ''}`}
-                    onClick={() => setActiveTab('favourites')}
-                  >
-                    Favourites
-                  </button>
+              <div className="form-sheet__eyebrow">New generation</div>
+              <h2 className="form-sheet__heading">Enter your text</h2>
+
+              <TextInput text={text} setText={setText} maxLength={MAX_LENGTH} />
+              <LanguageSelector language={language} setLanguage={setLanguage} voices={voices} />
+              <VoiceSelector
+                voice={voice}
+                setVoice={setVoice}
+                voices={voices}
+                language={language}
+                isFav={isFav(voice)}
+                onToggleFav={handleToggleFav}
+                isLoggedIn={!!user}
+              />
+              <GenerateButton onClick={handleGenerate} loading={loading} disabled={!text.trim()} />
+
+              <ErrorMessage message={error} />
+
+              {audioUrl && (
+                <div className="audio-block">
+                  <div className="audio-block__title">Generated audio</div>
+                  <AudioPlayer audioUrl={audioUrl} />
+                  <DownloadButton downloadUrl={getDownloadUrl(filename)} filename={filename} />
                 </div>
               )}
-
-              {/* Main Tab Content */}
-              {activeTab === 'generate' && (
-                <>
-                  <div className="form-sheet__eyebrow">New generation</div>
-                  <h2 className="form-sheet__heading">Enter your text</h2>
-
-                  <TextInput text={text} setText={setText} maxLength={MAX_LENGTH} />
-                  <LanguageSelector language={language} setLanguage={setLanguage} voices={voices} />
-                  <VoiceSelector
-                    voice={voice}
-                    setVoice={setVoice}
-                    voices={voices}
-                    language={language}
-                    isFav={isFav(voice)}
-                    onToggleFav={handleToggleFav}
-                    isLoggedIn={!!user}
-                  />
-                  <GenerateButton onClick={handleGenerate} loading={loading} disabled={!text.trim()} />
-
-                  <ErrorMessage message={error} />
-
-                  {audioUrl && (
-                    <div className="audio-block">
-                      <div className="audio-block__title">Generated audio</div>
-                      <AudioPlayer audioUrl={audioUrl} />
-                      <DownloadButton downloadUrl={getDownloadUrl(filename)} filename={filename} />
-                    </div>
-                  )}
-                </>
-              )}
-
-              {activeTab === 'history' && user && (
-                <HistoryList accessToken={accessToken} />
-              )}
-
-              {activeTab === 'favourites' && user && (
-                <FavouritesList
-                  accessToken={accessToken}
-                  voices={voices}
-                  onSelectVoice={handleSelectFavVoice}
-                />
-              )}
             </>
+          )}
+
+          {activeTab === 'history' && user && (
+            <HistoryList accessToken={accessToken} />
+          )}
+
+          {activeTab === 'favourites' && user && (
+            <FavouritesList
+              accessToken={accessToken}
+              voices={voices}
+              onSelectVoice={handleSelectFavVoice}
+            />
           )}
         </div>
       </main>

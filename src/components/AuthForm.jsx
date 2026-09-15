@@ -2,9 +2,9 @@ import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import ErrorMessage from './ErrorMessage';
 
-function AuthForm({ onSuccess, onClose, onGuest }) {
+function AuthForm({ initialMode = 'login', onSuccess, onBack, onGuest }) {
   const { signIn, signUp } = useAuth();
-  const [mode, setMode] = useState('login'); // 'login' | 'signup'
+  const [mode, setMode] = useState(initialMode); // 'login' | 'signup'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -33,7 +33,6 @@ function AuthForm({ onSuccess, onClose, onGuest }) {
       } else {
         await signUp(email, password);
         setNotice('Account created successfully! Logging you in...');
-        // Auto sign in after signup
         await signIn(email, password);
         if (onSuccess) onSuccess();
       }
@@ -48,16 +47,21 @@ function AuthForm({ onSuccess, onClose, onGuest }) {
     <div className="auth-card">
       <div className="auth-card__header">
         <div>
+          {onBack && (
+            <button
+              type="button"
+              className="btn-text"
+              style={{ fontSize: 13, marginBottom: 12, display: 'inline-block' }}
+              onClick={onBack}
+            >
+              ← Back to Home
+            </button>
+          )}
           <div className="form-sheet__eyebrow">{mode === 'login' ? 'Welcome back' : 'New here'}</div>
           <h2 className="form-sheet__heading" style={{ marginBottom: 0 }}>
             {mode === 'login' ? 'Log in' : 'Create an account'}
           </h2>
         </div>
-        {onClose && (
-          <button type="button" className="btn-close" onClick={onClose} aria-label="Close">
-            ✕
-          </button>
-        )}
       </div>
 
       <form onSubmit={handleSubmit} style={{ marginTop: 24 }}>
