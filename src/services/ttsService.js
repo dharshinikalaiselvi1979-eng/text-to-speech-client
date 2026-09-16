@@ -1,6 +1,5 @@
 import axios from 'axios';
-
-const API_BASE = `${import.meta.env.VITE_API_URL}/api`;
+import { BASE_URL, API_BASE } from './apiConfig';
 
 // TTS
 export const convertToSpeech = (text, language, voice, accessToken) =>
@@ -12,8 +11,8 @@ export const convertToSpeech = (text, language, voice, accessToken) =>
 
 export const getVoices = () => axios.get(`${API_BASE}/voices`);
 
-export const getAudioUrl = (path) => `${import.meta.env.VITE_API_URL}${path}`;
-export const getDownloadUrl = (filename) => `${import.meta.env.VITE_API_URL}/api/download/${filename}`;
+export const getAudioUrl = (path) => `${BASE_URL}${path}`;
+export const getDownloadUrl = (filename) => `${API_BASE}/download/${filename}`;
 
 // History
 export const getHistory = (accessToken) =>

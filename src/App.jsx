@@ -20,6 +20,7 @@ import {
   addFavourite,
   removeFavourite,
 } from './services/ttsService';
+import { DEFAULT_VOICES } from './services/defaultVoices';
 import './App.css';
 
 const MAX_LENGTH = 500;
@@ -44,7 +45,7 @@ function App() {
   const [text, setText] = useState('');
   const [language, setLanguage] = useState('');
   const [voice, setVoice] = useState('');
-  const [voices, setVoices] = useState([]);
+  const [voices, setVoices] = useState(DEFAULT_VOICES);
   const [audioUrl, setAudioUrl] = useState('');
   const [filename, setFilename] = useState('');
   const [loading, setLoading] = useState(false);
@@ -61,9 +62,27 @@ function App() {
   const [favourites, setFavourites] = useState([]);
 
   useEffect(() => {
-    getVoices()
-      .then((res) => setVoices(res.data.voices))
-      .catch(() => setError('Could not load voices. Is the backend running?'));
+    let timer;
+    const fetchServerVoices = () => {
+      getVoices()
+        .then((res) => {
+          if (res.data?.voices?.length) {
+            setVoices(res.data.voices);
+          }
+        })
+        .catch(() => {
+          // If cold starting, retry once after 5s
+          timer = setTimeout(() => {
+            getVoices()
+              .then((res) => {
+                if (res.data?.voices?.length) setVoices(res.data.voices);
+              })
+              .catch(() => {});
+          }, 5000);
+        });
+    };
+    fetchServerVoices();
+    return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {
