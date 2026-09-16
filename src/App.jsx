@@ -115,7 +115,13 @@ function App() {
       setFilename(res.data.filename);
     } catch (err) {
       const backendMessage = err.response?.data?.error;
-      setError(backendMessage || 'Something went wrong. Please try again.');
+      const isNetworkErr = err.code === 'ERR_NETWORK' || err.message === 'Network Error';
+      setError(
+        backendMessage ||
+        (isNetworkErr
+          ? 'Unable to connect to backend server. Make sure the backend server is running and VITE_API_URL is configured correctly.'
+          : 'Something went wrong. Please try again.')
+      );
     } finally {
       setLoading(false);
     }

@@ -21,30 +21,44 @@ export function AuthProvider({ children }) {
   }, []);
 
   const signUp = async (email, password) => {
-    const res = await fetch(`${API}/api/auth/signup`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    });
-    const data = await res.json();
-    if (!data.success) throw new Error(data.error);
-    return data;
+    try {
+      const res = await fetch(`${API}/api/auth/signup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error);
+      return data;
+    } catch (err) {
+      if (err.name === 'TypeError' || err.message?.includes('Failed to fetch')) {
+        throw new Error('Unable to connect to backend server. Make sure the backend server is running and VITE_API_URL is configured correctly.');
+      }
+      throw err;
+    }
   };
 
   const signIn = async (email, password) => {
-    const res = await fetch(`${API}/api/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    });
-    const data = await res.json();
-    if (!data.success) throw new Error(data.error);
+    try {
+      const res = await fetch(`${API}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error);
 
-    setAccessToken(data.accessToken);
-    setUser(data.user);
-    localStorage.setItem('tts_token', data.accessToken);
-    localStorage.setItem('tts_user', JSON.stringify(data.user));
-    return data;
+      setAccessToken(data.accessToken);
+      setUser(data.user);
+      localStorage.setItem('tts_token', data.accessToken);
+      localStorage.setItem('tts_user', JSON.stringify(data.user));
+      return data;
+    } catch (err) {
+      if (err.name === 'TypeError' || err.message?.includes('Failed to fetch')) {
+        throw new Error('Unable to connect to backend server. Make sure the backend server is running and VITE_API_URL is configured correctly.');
+      }
+      throw err;
+    }
   };
 
   const signOut = () => {
