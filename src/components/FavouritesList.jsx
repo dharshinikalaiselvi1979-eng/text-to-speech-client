@@ -25,9 +25,11 @@ function FavouritesList({ accessToken, voices, onSelectVoice }) {
     }
   };
 
-  const handleRemove = async (voiceName) => {
+  const handleRemove = async (favItem) => {
+    const voiceName = typeof favItem === 'string' ? favItem : favItem.voice_name;
+    const id = typeof favItem === 'object' && favItem.id ? favItem.id : voiceName;
     try {
-      await removeFavourite(voiceName, accessToken);
+      await removeFavourite(id, accessToken);
       setFavourites((prev) => prev.filter((f) => f.voice_name !== voiceName));
     } catch (err) {
       setError('Failed to remove favourite.');
@@ -71,7 +73,7 @@ function FavouritesList({ accessToken, voices, onSelectVoice }) {
                     type="button"
                     className="btn-icon"
                     style={{ color: 'var(--accent)' }}
-                    onClick={() => handleRemove(fav.voice_name)}
+                    onClick={() => handleRemove(fav)}
                     title="Remove from favourites"
                   >
                     ★ Remove

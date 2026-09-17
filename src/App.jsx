@@ -152,14 +152,18 @@ function App() {
     if (!accessToken) return;
     try {
       if (isFav(vName)) {
-        await removeFavourite(vName, accessToken);
+        const favObj = favourites.find((f) => f.voice_name === vName);
+        await removeFavourite(favObj?.id || vName, accessToken);
         setFavourites((prev) => prev.filter((f) => f.voice_name !== vName));
       } else {
-        await addFavourite(vName, accessToken);
-        setFavourites((prev) => [...prev, { voice_name: vName }]);
+        const res = await addFavourite(vName, language || 'en', accessToken);
+        const newFav = res.data?.favourite || { voice_name: vName, language: language || 'en' };
+        setFavourites((prev) => [...prev, newFav]);
       }
     } catch (err) {
-      setError('Could not update favourite.');
+      console.error('Toggle favourite error:', err);
+      const backendErr = err.response?.data?.error;
+      setError(backendErr || 'Could not update favourite.');
     }
   };
 

@@ -22,14 +22,17 @@ export const getHistory = (accessToken) =>
 export const getFavourites = (accessToken) =>
   axios.get(`${API_BASE}/favourites`, { headers: { Authorization: `Bearer ${accessToken}` } });
 
-export const addFavourite = (voice_name, language, accessToken) =>
-  axios.post(
+export const addFavourite = (voice_name, languageOrToken, maybeToken) => {
+  const language = typeof languageOrToken === 'string' && languageOrToken.length < 15 ? languageOrToken : 'en';
+  const token = typeof languageOrToken === 'string' && languageOrToken.length >= 15 ? languageOrToken : maybeToken;
+  return axios.post(
     `${API_BASE}/favourites`,
     { voice_name, language },
-    { headers: { Authorization: `Bearer ${accessToken}` } }
+    { headers: { Authorization: `Bearer ${token}` } }
   );
+};
 
-export const removeFavourite = (id, accessToken) =>
-  axios.delete(`${API_BASE}/favourites/${id}`, {
+export const removeFavourite = (idOrVoiceName, accessToken) =>
+  axios.delete(`${API_BASE}/favourites/${encodeURIComponent(idOrVoiceName)}`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
